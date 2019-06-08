@@ -133,6 +133,7 @@ module.exports = app => {
     let medicines = req.body.sales;
     try {
       for (medicine of medicines) {
+        console.log(medicine._id);
         let result = await Medicine.findById({ _id: medicine._id });
         result.total = result.total - medicine.total;
         await result.save();
