@@ -15,12 +15,13 @@ module.exports = app => {
     try {
       let result = await medicine.save();
       if (result != null || result != undefined) {
-        res.status(200).send(`ADDITION SUCCESS FOR MEDICINE ${req.body.name}`);
+        res.status(200).send({ success: true, medicine: req.body.name });
       }
     } catch (err) {
-      res
-        .status(200)
-        .send(`MEDICINE WITH ${req.body.name} NAME ALREADY EXISTS`);
+      res.status(200).send({
+        success: false,
+        message: `MEDICINE WITH ${req.body.name} NAME ALREADY EXISTS`
+      });
     }
   });
 
@@ -38,10 +39,10 @@ module.exports = app => {
         { new: true }
       );
       if (result != null || result != undefined) {
-        res.status(200).send(`UPDATED SUCCESS FOR MEDICINE ${req.body.name}`);
+        res.status(200).send(`UPDATE SUCCESS`);
       }
     } catch (err) {
-      res.status(200).send(`UPDATED FAILED FOR MEDICINE ${req.body.name}`);
+      res.status(200).send(`UPDATED FAILED`);
     }
   });
 

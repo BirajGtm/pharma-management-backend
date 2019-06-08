@@ -6,7 +6,10 @@ const config = require("config");
 const routes = require("./routes/endpoints");
 
 mongoose
-  .connect(config.get("mongoUri"), { useCreateIndex: true, useNewUrlParser: true })
+  .connect(config.get("mongoUri"), {
+    useCreateIndex: true,
+    useNewUrlParser: true
+  })
   .then(() => console.log("mongodb connected"))
   .catch(err => console.log(err));
 
