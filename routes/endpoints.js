@@ -6,7 +6,7 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const config = require("config");
 module.exports = app => {
-  app.post("/api/save", verifyToken, async (req, res) => {
+  app.post("/api/medicine/save", verifyToken, async (req, res) => {
     let verified = jwt.verify(req.token, config.get("secret"));
     if (verified != null || verified != undefined) {
       let medicine = new Medicine({
@@ -35,7 +35,7 @@ module.exports = app => {
     }
   });
 
-  app.post("/api/update", verifyToken, async (req, res) => {
+  app.post("/api/medicine/update", verifyToken, async (req, res) => {
     let verified = jwt.verify(req.token, config.get("secret"));
     if (verified != null || verified != undefined) {
       try {
@@ -64,7 +64,7 @@ module.exports = app => {
     }
   });
 
-  app.post("/api/delete", verifyToken, async (req, res) => {
+  app.post("/api/medicine/delete", verifyToken, async (req, res) => {
     let verified = jwt.verify(req.token, config.get("secret"));
     if (verified != null || verified != undefined) {
       try {
@@ -83,7 +83,7 @@ module.exports = app => {
     }
   });
 
-  app.get("/api/list", verifyToken, async (req, res) => {
+  app.get("/api/medicine/list", verifyToken, async (req, res) => {
     let verified = jwt.verify(req.token, config.get("secret"));
     if (verified != null || verified != undefined) {
       try {
@@ -182,7 +182,7 @@ module.exports = app => {
     }
   });
 
-  app.post("/api/stocks-sold", verifyToken, async (req, res) => {
+  app.post("/api/medicine/stocks-sold", verifyToken, async (req, res) => {
     let verified = jwt.verify(req.token, config.get("secret"));
     if (verified != null || verified != undefined) {
       let medicines = req.body.sales;
@@ -211,7 +211,7 @@ module.exports = app => {
     }
   });
 
-  app.get("/api/sales", verifyToken, async (req, res) => {
+  app.get("/api/medicine/sales", verifyToken, async (req, res) => {
     let verified = jwt.verify(req.token, config.get("secret"));
     if (verified != null || verified != undefined) {
       try {
