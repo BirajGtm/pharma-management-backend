@@ -3,68 +3,102 @@ const Medicine = require("../model/medicine");
 const Auth = require("../model/auth");
 const Sale = require("../model/sales");
 const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
+const config = require("config");
 module.exports = app => {
-  app.post("/api/save", async (req, res) => {
-    let medicine = new Medicine({
-      name: req.body.name,
-      mfd: req.body.mfd,
-      exd: req.body.exd,
-      cost: req.body.cost,
-      total: req.body.total
-    });
-    try {
-      let result = await medicine.save();
-      if (result != null || result != undefined) {
-        res.status(200).send({ success: true, medicine: req.body.name });
+  app.post("/api/save", verifyToken, async (req, res) => {
+    let verified = jwt.verify(req.token, config.get("secret"));
+    if (verified != null || verified != undefined) {
+      let medicine = new Medicine({
+        name: req.body.name,
+        mfd: req.body.mfd,
+        exd: req.body.exd,
+        cost: req.body.cost,
+        total: req.body.total
+      });
+      try {
+        let result = await medicine.save();
+        if (result != null || result != undefined) {
+          res.status(200).send({ success: true, medicine: req.body.name });
+        }
+      } catch (err) {
+        res.status(200).send({
+          success: false,
+          message: `MEDICINE WITH ${req.body.name} NAME ALREADY EXISTS`
+        });
       }
-    } catch (err) {
+    } else {
       res.status(200).send({
         success: false,
-        message: `MEDICINE WITH ${req.body.name} NAME ALREADY EXISTS`
+        message: "Authorization error"
       });
     }
   });
 
-  app.post("/api/update", async (req, res) => {
-    try {
-      let result = await Medicine.findOneAndUpdate(
-        { _id: req.body._id },
-        {
-          name: req.body.name,
-          mfd: req.body.mfd,
-          exd: req.body.exd,
-          cost: req.body.cost,
-          total: req.body.total
-        },
-        { new: true }
-      );
-      if (result != null || result != undefined) {
-        res.status(200).send(`UPDATE SUCCESS`);
+  app.post("/api/update", verifyToken, async (req, res) => {
+    let verified = jwt.verify(req.token, config.get("secret"));
+    if (verified != null || verified != undefined) {
+      try {
+        let result = await Medicine.findOneAndUpdate(
+          { _id: req.body._id },
+          {
+            name: req.body.name,
+            mfd: req.body.mfd,
+            exd: req.body.exd,
+            cost: req.body.cost,
+            total: req.body.total
+          },
+          { new: true }
+        );
+        if (result != null || result != undefined) {
+          res.status(200).send(`UPDATE SUCCESS`);
+        }
+      } catch (err) {
+        res.status(200).send(`UPDATED FAILED`);
       }
-    } catch (err) {
-      res.status(200).send(`UPDATED FAILED`);
+    } else {
+      res.status(200).send({
+        success: false,
+        message: "Authorization error"
+      });
     }
   });
 
-  app.post("/api/delete", async (req, res) => {
-    try {
-      let result = await Medicine.findOneAndDelete({ _id: req.body._id });
-      if (result != null || result != undefined) {
-        res.status(200).send("DELETED SUCCESSFULLY");
+  app.post("/api/delete", verifyToken, async (req, res) => {
+    let verified = jwt.verify(req.token, config.get("secret"));
+    if (verified != null || verified != undefined) {
+      try {
+        let result = await Medicine.findOneAndDelete({ _id: req.body._id });
+        if (result != null || result != undefined) {
+          res.status(200).send("DELETED SUCCESSFULLY");
+        }
+      } catch (err) {
+        res.status(200).send("MEDICINE WITH THIS ID DOESN'T EXIT");
       }
-    } catch (err) {
-      res.status(200).send("MEDICINE WITH THIS ID DOESN'T EXIT");
+    } else {
+      res.status(200).send({
+        success: false,
+        message: "Authorization error"
+      });
     }
   });
 
-  app.get("/api/list", async (req, res) => {
-    try {
-      let medicine = await Medicine.find({});
-      if (medicine != null || medicine != undefined) {
-        res.json(medicine);
+  app.get("/api/list", verifyToken, async (req, res) => {
+    let verified = jwt.verify(req.token, config.get("secret"));
+    if (verified != null || verified != undefined) {
+      try {
+        let medicine = await Medicine.find({});
+        if (medicine != null || medicine != undefined) {
+          res.json(medicine);
+        }
+      } catch (err) {
+        res.status(200).send("EMPTY MED STOCKS");
       }
-    } catch (err) {
-      res.status(200).send("EMPTY MED STOCKS");
+    } else {
+      res.status(200).send({
+        success: false,
+        message: "Authorization error"
+      });
     }
   });
 
@@ -99,76 +133,205 @@ module.exports = app => {
       isMatch = await bcrypt.compare(password, hashedPassword);
     }
     if (isMatch) {
-      res.json(result.email);
+      let token = await jwt.sign({ user: result }, config.get("secret"), {
+        expiresIn: "24h"
+      });
+      res.json({ token, result });
     } else {
       res.status(200).send("USERNAME OR PASSWORD IS INVALID");
     }
   });
 
-  app.get("/api/expired", async (req, res) => {
-    let results = await Medicine.find({})
-      .where("exd")
-      .lt(Date.now());
-    if (results != null || results != undefined || results.length != 0) {
-      res.json(results);
-    } else {
-      res.status(200).send("NONE ARE EXPIRED");
-    }
-  });
-
-  app.get("/api/search", async (req, res) => {
-    let results = await Medicine.find({
-      name: { $regex: new RegExp(req.body.name, "i") }
-    })
-      .where("exd")
-      .gt(Date.now());
-    if (results != null || results != undefined || results.length != 0) {
-      res.json(results);
-    } else {
-      res.status(200).send("MEDICINES WITH THE GIVEN NAME IS NOT AVAILABLE");
-    }
-  });
-
-  app.post("/api/stocks-sold", async (req, res) => {
-    let medicines = req.body.sales;
-    try {
-      for (medicine of medicines) {
-        console.log(medicine._id);
-        let result = await Medicine.findById({ _id: medicine._id });
-        result.total = result.total - medicine.total;
-        await result.save();
-        let sales = new Sale({
-          name: result.name,
-          cost: result.cost,
-          sold: medicine.total
-        });
-        await sales.save();
-      }
-      res.status(200).send("STOCKS UPDATED");
-    } catch (err) {
-      res.status(200).send(err.errmsg);
-    }
-  });
-
-  app.get("/api/sales", async (req, res) => {
-    try {
-      let sales;
-      if (
-        req.body.search != null ||
-        req.body.search != undefined ||
-        req.body.search != ""
-      ) {
-        sales = await Sale.find({
-          name: { $regex: new RegExp(req.body.search, "i") }
-        });
+  app.get("/api/expired", verifyToken, async (req, res) => {
+    let verified = jwt.verify(req.token, config.get("secret"));
+    if (verified != null || verified != undefined) {
+      let results = await Medicine.find({})
+        .where("exd")
+        .lt(Date.now());
+      if (results != null || results != undefined || results.length != 0) {
+        res.json(results);
       } else {
-        sales = await Sale.find({});
+        res.status(200).send("NONE ARE EXPIRED");
       }
-      if (sales != null || sales != undefined) {
-        res.json(sales);
+    } else {
+      res.status(200).send({
+        success: false,
+        message: "Authorization error"
+      });
+    }
+  });
+
+  app.get("/api/search", verifyToken, async (req, res) => {
+    let verified = jwt.verify(req.token, config.get("secret"));
+    if (verified != null || verified != undefined) {
+      let results = await Medicine.find({
+        name: { $regex: new RegExp(req.body.name, "i") }
+      })
+        .where("exd")
+        .gt(Date.now());
+      if (results != null || results != undefined || results.length != 0) {
+        res.json(results);
+      } else {
+        res.status(200).send("MEDICINES WITH THE GIVEN NAME IS NOT AVAILABLE");
       }
-    } catch (err) {
-      res.status(200).send("NO MEDS SOLD YET");
+    } else {
+      res.status(200).send({
+        success: false,
+        message: "Authorization error"
+      });
+    }
+  });
+
+  app.post("/api/stocks-sold", verifyToken, async (req, res) => {
+    let verified = jwt.verify(req.token, config.get("secret"));
+    if (verified != null || verified != undefined) {
+      let medicines = req.body.sales;
+      try {
+        for (medicine of medicines) {
+          console.log(medicine._id);
+          let result = await Medicine.findById({ _id: medicine._id });
+          result.total = result.total - medicine.total;
+          await result.save();
+          let sales = new Sale({
+            name: result.name,
+            cost: result.cost,
+            sold: medicine.total
+          });
+          await sales.save();
+        }
+        res.status(200).send("STOCKS UPDATED");
+      } catch (err) {
+        res.status(200).send(err.errmsg);
+      }
+    } else {
+      res.status(200).send({
+        success: false,
+        message: "Authorization error"
+      });
+    }
+  });
+
+  app.get("/api/sales", verifyToken, async (req, res) => {
+    let verified = jwt.verify(req.token, config.get("secret"));
+    if (verified != null || verified != undefined) {
+      try {
+        let sales;
+        if (
+          req.body.search != null ||
+          req.body.search != undefined ||
+          req.body.search != ""
+        ) {
+          sales = await Sale.find({
+            name: { $regex: new RegExp(req.body.search, "i") }
+          });
+        } else {
+          sales = await Sale.find({});
+        }
+        if (sales != null || sales != undefined) {
+          res.json(sales);
+        }
+      } catch (err) {
+        res.status(200).send("NO MEDS SOLD YET");
+      }
+    } else {
+      res.status(200).send({
+        success: false,
+        message: "Authorization error"
+      });
+    }
+  });
+
+  app.get("/api/users", verifyToken, async (req, res) => {
+    let verified = jwt.verify(req.token, config.get("secret"));
+    if (verified != null || verified != undefined) {
+      if (
+        verified.user.email === "admin@admin.com" &&
+        verified.user.username === "admin"
+      ) {
+        let results = await Auth.find({});
+        if (results != null || results != undefined || results.length != 0) {
+          res.json(results);
+        } else {
+          res.status(200).send("You don't have admin access");
+        }
+      }
+    } else {
+      res.status(200).send({
+        success: false,
+        message: "Authorization error"
+      });
+    }
+  });
+
+  app.post("/api/user/update", verifyToken, async (req, res) => {
+    let verified = jwt.verify(req.token, config.get("secret"));
+    if (verified != null || verified != undefined) {
+      if (
+        verified.user.email === "admin@admin.com" &&
+        verified.user.username === "admin"
+      ) {
+        let result = await Auth.findOneAndUpdate(
+          { _id: req.body._id },
+          {
+            username: req.body.username
+          },
+          { new: true }
+        );
+        if (result != null || result != undefined || result.length != 0) {
+          res.json("User has been successfully updated");
+        } else {
+          res.status(200).send("You don't have admin access");
+        }
+      }
+    } else {
+      res.status(200).send({
+        success: false,
+        message: "Authorization error"
+      });
+    }
+  });
+
+  app.post("/api/user/delete", verifyToken, async (req, res) => {
+    let verified = jwt.verify(req.token, config.get("secret"));
+    if (verified != null || verified != undefined) {
+      if (
+        verified.user.email === "admin@admin.com" &&
+        verified.user.username === "admin"
+      ) {
+        let result = await Auth.findOneAndDelete({ _id: req.body._id });
+        if (result != null || result != undefined || result.length != 0) {
+          res.json(
+            `User with id ${req.body._id} has been deleted successfully`
+          );
+        } else {
+          res.status(200).send("You don't have admin access");
+        }
+      }
+    } else {
+      res.status(200).send({
+        success: false,
+        message: "Authorization error"
+      });
     }
   });
 };
+//helper function
+// Verify Token
+function verifyToken(req, res, next) {
+  // Get auth header value
+  const bearerHeader = req.headers["authorization"];
+  // Check if bearer is undefined
+  if (typeof bearerHeader !== "undefined") {
+    // Split at the space
+    const bearer = bearerHeader.split(" ");
+    // Get token from array
+    const bearerToken = bearer[1];
+    // Set the token
+    req.token = bearerToken;
+    // Next middleware
+    next();
+  } else {
+    // Forbidden
+    res.sendStatus(403);
+  }
+}

@@ -1,3 +1,4 @@
 {
-  "mongoUri": "mongodb://pharma:pharma1@ds155516.mlab.com:55516/pharma-app"
+  "mongoUri": "mongodb://pharma:pharma1@ds155516.mlab.com:55516/pharma-app",
+  "secret": "secret_oh_good_not_again"
 }
