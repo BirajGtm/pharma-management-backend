@@ -122,12 +122,10 @@ module.exports = app => {
   });
 
   app.post("/api/login", async (req, res) => {
-    console.log(req.body, "req body");
     let password = req.body.password;
     let username = req.body.username;
     let result = await Auth.findOne({ username: username });
     let isMatch;
-    console.log(result);
     if (result != null || result != undefined) {
       let hashedPassword = result.password;
       isMatch = await bcrypt.compare(password, hashedPassword);
@@ -142,14 +140,14 @@ module.exports = app => {
     }
   });
 
-  app.get("/api/expired", verifyToken, async (req, res) => {
+  app.get("/api/medicine/expired", verifyToken, async (req, res) => {
     let verified = jwt.verify(req.token, config.get("secret"));
     if (verified != null || verified != undefined) {
       let results = await Medicine.find({})
         .where("exd")
         .lt(Date.now());
       if (results != null || results != undefined || results.length != 0) {
-        res.json(results);
+        res.json({ meds: results });
       } else {
         res.status(200).send("NONE ARE EXPIRED");
       }
@@ -188,7 +186,6 @@ module.exports = app => {
       let medicines = req.body.sales;
       try {
         for (medicine of medicines) {
-          console.log(medicine._id);
           let result = await Medicine.findById({ _id: medicine._id });
           result.total = result.total - medicine.total;
           await result.save();
@@ -244,16 +241,9 @@ module.exports = app => {
   app.get("/api/users", verifyToken, async (req, res) => {
     let verified = jwt.verify(req.token, config.get("secret"));
     if (verified != null || verified != undefined) {
-      if (
-        verified.user.email === "admin@admin.com" &&
-        verified.user.username === "admin"
-      ) {
-        let results = await Auth.find({});
-        if (results != null || results != undefined || results.length != 0) {
-          res.json(results);
-        } else {
-          res.status(200).send("You don't have admin access");
-        }
+      let results = await Auth.find({});
+      if (results != null || results != undefined || results.length != 0) {
+        res.json({ users: results });
       }
     } else {
       res.status(200).send({
@@ -266,22 +256,18 @@ module.exports = app => {
   app.post("/api/user/update", verifyToken, async (req, res) => {
     let verified = jwt.verify(req.token, config.get("secret"));
     if (verified != null || verified != undefined) {
-      if (
-        verified.user.email === "admin@admin.com" &&
-        verified.user.username === "admin"
-      ) {
-        let result = await Auth.findOneAndUpdate(
-          { _id: req.body._id },
-          {
-            username: req.body.username
-          },
-          { new: true }
-        );
-        if (result != null || result != undefined || result.length != 0) {
-          res.json("User has been successfully updated");
-        } else {
-          res.status(200).send("You don't have admin access");
-        }
+      let result = await Auth.findOneAndUpdate(
+        { _id: req.body._id },
+        {
+          username: req.body.username
+        },
+        { new: true }
+      );
+      if (result != null || result != undefined || result.length != 0) {
+        res.status(200).send({
+          success: true,
+          message: "User Updated"
+        });
       }
     } else {
       res.status(200).send({
@@ -294,18 +280,12 @@ module.exports = app => {
   app.post("/api/user/delete", verifyToken, async (req, res) => {
     let verified = jwt.verify(req.token, config.get("secret"));
     if (verified != null || verified != undefined) {
-      if (
-        verified.user.email === "admin@admin.com" &&
-        verified.user.username === "admin"
-      ) {
-        let result = await Auth.findOneAndDelete({ _id: req.body._id });
-        if (result != null || result != undefined || result.length != 0) {
-          res.json(
-            `User with id ${req.body._id} has been deleted successfully`
-          );
-        } else {
-          res.status(200).send("You don't have admin access");
-        }
+      let result = await Auth.findOneAndDelete({ _id: req.body._id });
+      if (result != null || result != undefined || result.length != 0) {
+        res.status(200).send({
+          success: true,
+          message: "User Deleted"
+        });
       }
     } else {
       res.status(200).send({
